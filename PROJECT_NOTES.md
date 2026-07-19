@@ -85,10 +85,25 @@ Waze**, que é o app principal usado hoje.
     `SPEED`=velocidade máxima, `Direction`=sentido em graus (0-359). É o
     formato de POI usado por GPS **iGO8/Amigo** para bases de radares
     (comum em bancos de dados brasileiros redistribuídos nesse formato).
-    Hipótese (a validar, ver "Em aberto"): `DirType=1` = radar direcional
-    (usa `Direction`), `DirType=0` = radar vale para os dois sentidos
-    (ignora `Direction`). `TYPE` = código de categoria (radar fixo, lombada
-    eletrônica, pardal etc.) — numeração exata não confirmada.
+    - **`TYPE` resolvido**: análise do arquivo real (`RadarFixo_maparadar.txt`,
+      11.775 linhas) mostra `TYPE=1` em 100% dos registros — export já vem
+      filtrado só com radares fixos (confirmado pelo usuário). Não precisa
+      de mapeamento de código.
+    - **`DirType` — hipótese refinada** (baseada na distribuição real dos
+      dados: `DirType=0` em 1.211 linhas, `DirType=1` em 9.060, `DirType=2`
+      em 1.504; `Direction` preenchido 0-359 nos três grupos): o campo
+      corresponde à opção de 3 estados que a comunidade preenche ao
+      cadastrar o radar (sentido único / ambos os sentidos / não
+      informado):
+      - `DirType=1` (maioria) → **sentido único**: só considera o radar se
+        o rumo do usuário estiver a ±90° de `Direction`.
+      - `DirType=2` → **ambos os sentidos**: considera se o rumo estiver a
+        ±90° de `Direction` OU de `Direction+180°`.
+      - `DirType=0` → **não informado**: trata como omnidirecional (sem
+        filtro de sentido) — mais seguro alertar de mais do que perder um
+        alerta real por falta de dado.
+      Ainda não confirmado 100% cruzando com a fonte comunitária (cruzar
+      alguns pontos manualmente no site de origem validaria de vez).
 16. **Repositório em monorepo**: projeto terá duas linguagens (Kotlin no
     Android, C++ no firmware ESP32) no mesmo repositório. Estrutura definida
     em "Convenção de pastas do repositório" abaixo.
@@ -142,12 +157,15 @@ rumo atual) e `DirectionFilter` (decide se um radar é candidato válido e se
 o estado é "aproximando" ou "cruzado").
 
 **Regra do `DirectionFilter` considerando `DirType`/`Direction` (formato
-iGO8/Amigo, hipótese a validar)**:
-- `DirType=1` (direcional): só considera o radar candidato se o rumo atual
-  do usuário estiver dentro de ±90° do valor de `Direction`.
-- `DirType=0` (ambos os sentidos): não filtra por sentido — o radar vale
-  para qualquer direção de tráfego.
-- Em ambos os casos, o estado "aproximando → cruzado" continua sendo
+iGO8/Amigo, 3 estados — ver item 15 das decisões para a análise dos dados
+reais)**:
+- `DirType=1` (sentido único): só considera o radar candidato se o rumo
+  atual do usuário estiver dentro de ±90° do valor de `Direction`.
+- `DirType=2` (ambos os sentidos): candidato se o rumo estiver a ±90° de
+  `Direction` **ou** de `Direction+180°`.
+- `DirType=0` (não informado): trata como omnidirecional — não filtra por
+  sentido.
+- Em todos os casos, o estado "aproximando → cruzado" continua sendo
   calculado pelo rumo do próprio usuário até o ponto do radar (independente
   do `DirType`).
 
@@ -257,12 +275,10 @@ Cada pasta de código tem sua própria toolchain isolada; `/design` e
 
 ## Em aberto / próximos passos
 
-1. Validar empiricamente o significado de `TYPE` e `DirType` no CSV real:
-   checar valores distintos presentes no arquivo (`TYPE` uniforme sugere
-   export já filtrado só para radar fixo; presença de `DirType=0` confirma
-   a hipótese de "ambos os sentidos"). Usuário não tem certeza do
-   significado, então a hipótese registrada acima precisa de validação
-   antes de travar a regra do `DirectionFilter`.
+1. (Opcional, baixa prioridade) Validar a hipótese de `DirType` cruzando 2-3
+   pontos do CSV com o site comunitário de origem (mapa de radar), para
+   confirmar 100% o mapeamento 0/1/2 antes de depender dele em produção.
+   `TYPE` já está resolvido (sempre `1`, sem necessidade de mapeamento).
 2. Criar o script/processo de conversão do CSV fonte (formato iGO8/Amigo)
    para o schema interno definido acima.
 3. Criar a estrutura inicial do projeto Android em `/android` (módulos
