@@ -318,8 +318,13 @@ no Android Studio / compilar o firmware.
 2. `include/TFT_eSPI_User_Setup.h` no `/esp32` tem pinagem genérica de
    exemplo — substituir pela configuração real já usada em projetos
    anteriores com essa mesma placa Ideaspark.
-3. `res/raw/splash.mp4` (referenciado por `SplashActivity`) ainda não
-   existe — falta adicionar o vídeo de splash.
+3. `res/raw/splash.mp4` era um arquivo inexistente e travava a compilação
+   (`Unresolved reference: raw` — o Android só gera a classe `R.raw` se
+   houver pelo menos um arquivo na pasta). **Criado um placeholder** (texto,
+   não é vídeo de verdade) só para destravar o build — como
+   `SplashActivity` já trata erro de reprodução (`setOnErrorListener`), ele
+   simplesmente pula pra tela principal quando o "vídeo" falha. Trocar
+   `android/app/src/main/res/raw/splash.mp4` pelo vídeo real quando tiver.
 4. ~~Gradle wrapper não foi gerado~~ **Resolvido**: `gradlew`, `gradlew.bat`
    e `gradle/wrapper/gradle-wrapper.jar` foram adicionados (ver "Wrapper do
    Gradle" abaixo — era a causa raiz de o Android Studio não reconhecer o
