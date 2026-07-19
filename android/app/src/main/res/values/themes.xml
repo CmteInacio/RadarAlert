@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.RadarAlert" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+    </style>
+
+    <style name="Theme.RadarAlert.Splash" parent="Theme.RadarAlert" />
+</resources>

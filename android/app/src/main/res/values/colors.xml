@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta baseada na logo do app: fundo escuro, aros/texto em ciano
+         neon, velocidade/ponteiro em âmbar. -->
+    <color name="background_dark">#0B1220</color>
+    <color name="accent_cyan">#3FE0E0</color>
+    <color name="accent_amber">#FFA733</color>
+    <color name="text_primary">#E6F7F7</color>
+
+    <!-- Cores de proximidade do radar, sobrepostas ao fundo. -->
+    <color name="proximity_yellow">#F2C230</color>
+    <color name="proximity_orange">#F28C30</color>
+    <color name="proximity_red">#E23B3B</color>
+</resources>

@@ -273,28 +273,65 @@ PROJECT_NOTES.md
 Cada pasta de código tem sua própria toolchain isolada; `/design` e
 `/data-raw` ficam fora de qualquer build.
 
-## Em aberto / próximos passos
+## Scaffold inicial criado (marco desta sessão)
 
-1. (Opcional, baixa prioridade) Validar a hipótese de `DirType` cruzando 2-3
-   pontos do CSV com o site comunitário de origem (mapa de radar), para
-   confirmar 100% o mapeamento 0/1/2 antes de depender dele em produção.
-   `TYPE` já está resolvido (sempre `1`, sem necessidade de mapeamento).
-2. Criar o script/processo de conversão do CSV fonte (formato iGO8/Amigo)
-   para o schema interno definido acima.
-3. Criar a estrutura inicial do projeto Android em `/android` (módulos
-   listados acima, incluindo `HeadingTracker`/`DirectionFilter` e
-   `SplashActivity`).
-4. Criar o firmware base do ESP32 em `/esp32` (PlatformIO; recepção BT +
-   parsing do protocolo + lógica de display 320x170 + estado "somente
-   velocidade" vs "com radar próximo").
-5. Testar a lógica de proximidade, direção e suavização de velocidade antes
-   de integrar o Bluetooth (MVP sem hardware, só com logs/tela).
-6. Preparar o vídeo de splash (mp4) e os assets de layout do celular
-   (baseados na paleta da logo, já disponível em `/design`).
+Estrutura completa criada e commitada:
+- `/data-raw/RadarFixo_maparadar.csv` — export real do usuário (11.775
+  linhas, formato iGO8/Amigo) + README explicando a fonte.
+- `/tools/convert_radares.py` — converte o export para o schema interno,
+  filtra pelo bounding box de RS/SC e gera hash de versão. Rodado de
+  verdade contra o arquivo real: **1.359 radares mantidos** dentro do
+  bounding box, gravados em `/data/radares_rs_sc.csv` + `/data/VERSION.txt`.
+- `/android` — projeto Gradle (Kotlin) com o domínio completo
+  (`GeoMath`, `ProximityCalculator`, `DirectionFilter`, `HeadingTracker`,
+  `SpeedSmoother`, `GpsIntervalStrategy`, `RadarStateEngine`), camada de
+  dados (Room + `GitCsvFetcher` + `RadarRepository`, `LocationRepository`,
+  `BluetoothRepository`), `RadarForegroundService`, `SplashActivity` (vídeo
+  mp4) e `SpeedDisplayActivity` (Compose, paleta da logo, ícone de BT
+  piscando quando desconectado).
+- `/esp32` — projeto PlatformIO com `main.cpp` (BluetoothSerial + TFT_eSPI,
+  320x170 paisagem, estados "só velocidade" / "com radar" / "BT
+  desconectado piscando") e `Protocol.h` (parser do protocolo de texto).
+
+**O que foi de fato verificado nesta sessão** (sem Android SDK nem
+PlatformIO disponíveis neste ambiente): o domínio (`GeoMath`,
+`DirectionFilter`, `RadarStateEngine`) foi copiado para um projeto Kotlin/JVM
+isolado e rodado com `gradle test` de verdade — **12 testes passando**,
+incluindo o cenário completo de "aproxima → alerta por faixa de cor → cruza
+e cessa o alerta" e o de "ignora radar de sentido único na pista
+contrária". Isso pegou um bug real: com tolerância de ±90°, o filtro de
+radares "ambos os sentidos" ficava sempre verdadeiro (as duas faixas
+cobrem o círculo inteiro) — ajustado para ±80° para deixar uma folga real
+de exclusão de tráfego perpendicular.
+
+**O que NÃO foi verificado** (sem SDK/toolchain no ambiente): compilação
+real do módulo Android via Gradle (falta Android SDK) e do firmware via
+PlatformIO. O código segue as APIs corretas (FusedLocationProviderClient,
+Room, BluetoothSocket SPP, TFT_eSPI), mas só será validado de fato ao abrir
+no Android Studio / compilar o firmware.
+
+## Pendências conhecidas do scaffold
+
+1. `ESP32_MAC_ADDRESS` em `RadarForegroundService.kt` está com um valor
+   placeholder (`00:00:00:00:00:00`) — precisa ser trocado pelo endereço
+   real do ESP32 (idealmente numa tela de pareamento, não fixo no código).
+2. `include/TFT_eSPI_User_Setup.h` no `/esp32` tem pinagem genérica de
+   exemplo — substituir pela configuração real já usada em projetos
+   anteriores com essa mesma placa Ideaspark.
+3. `res/raw/splash.mp4` (referenciado por `SplashActivity`) ainda não
+   existe — falta adicionar o vídeo de splash.
+4. Gradle wrapper (`gradlew` + `gradle-wrapper.jar`) não foi gerado — ao
+   abrir o projeto no Android Studio, ele oferece para criar
+   automaticamente (ou rodar `gradle wrapper` uma vez).
+5. (Opcional, baixa prioridade) Validar a hipótese de `DirType` cruzando
+   2-3 pontos do CSV com o site comunitário de origem.
+6. Trocar `applicationId`/pacote (`com.radaralert.app`) se o usuário
+   preferir outro nome, e revisar a URL do `GitCsvFetcher`
+   (`raw.githubusercontent.com/CmteInacio/RadarAlert/main/...`) contra o
+   branch real que vai hospedar os dados em produção.
 
 ## Estado do repositório
 
-Repositório `CmteInacio/RadarAlert` estava vazio (sem commits) no momento
-desta conversa. Branch de trabalho: `claude/android-gps-realtime-location-2oymhb`.
-Nenhum código foi implementado ainda — a conversa até aqui foi 100% de
-alinhamento de requisitos e desenho de arquitetura.
+Branch de trabalho: `claude/android-gps-realtime-location-2oymhb`. Scaffold
+inicial de `/android`, `/esp32`, `/data-raw`, `/data` e `/tools` criado e
+commitado nesta sessão — ver seção acima para o que foi verificado.

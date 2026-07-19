@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RadarAlert</string>
+    <string name="notification_channel_name">RadarAlert em execução</string>
+    <string name="notification_title">RadarAlert ativo</string>
+    <string name="notification_text_idle">Monitorando radares por perto</string>
+</resources>
