@@ -82,13 +82,17 @@ Waze**, que é o app principal usado hoje.
 15. **Fonte de dados já tem campo de sentido**: formato real da fonte do
     usuário é `X,Y,TYPE,SPEED,DirType,Direction` (ex.:
     `-54.580523,-20.480856,1,30,1,235`), onde `X`=longitude, `Y`=latitude,
-    `SPEED`=velocidade máxima, `Direction`=sentido em graus (0-359). Falta
-    confirmar o significado de `TYPE` (tipo de radar — precisa saber qual
-    valor corresponde a "fixo") e `DirType` (função ainda não identificada;
-    pode indicar se a via é dividida/o sentido é aplicável). Ver "Em aberto".
+    `SPEED`=velocidade máxima, `Direction`=sentido em graus (0-359). É o
+    formato de POI usado por GPS **iGO8/Amigo** para bases de radares
+    (comum em bancos de dados brasileiros redistribuídos nesse formato).
+    Hipótese (a validar, ver "Em aberto"): `DirType=1` = radar direcional
+    (usa `Direction`), `DirType=0` = radar vale para os dois sentidos
+    (ignora `Direction`). `TYPE` = código de categoria (radar fixo, lombada
+    eletrônica, pardal etc.) — numeração exata não confirmada.
 16. **Repositório em monorepo**: projeto terá duas linguagens (Kotlin no
     Android, C++ no firmware ESP32) no mesmo repositório. Estrutura definida
     em "Convenção de pastas do repositório" abaixo.
+17. **PlatformIO** confirmado como toolchain do firmware ESP32 (`/esp32`).
 
 ## Principais dificuldades/pontos fracos identificados
 
@@ -136,6 +140,16 @@ Dois problemas distintos, duas soluções complementares:
 Isso adiciona um novo componente ao domínio: `HeadingTracker` (calcula/lê o
 rumo atual) e `DirectionFilter` (decide se um radar é candidato válido e se
 o estado é "aproximando" ou "cruzado").
+
+**Regra do `DirectionFilter` considerando `DirType`/`Direction` (formato
+iGO8/Amigo, hipótese a validar)**:
+- `DirType=1` (direcional): só considera o radar candidato se o rumo atual
+  do usuário estiver dentro de ±90° do valor de `Direction`.
+- `DirType=0` (ambos os sentidos): não filtra por sentido — o radar vale
+  para qualquer direção de tráfego.
+- Em ambos os casos, o estado "aproximando → cruzado" continua sendo
+  calculado pelo rumo do próprio usuário até o ponto do radar (independente
+  do `DirType`).
 
 ## Desenho técnico (arquitetura proposta)
 
@@ -233,32 +247,33 @@ Repositório único com duas linguagens (Kotlin no app, C++ no firmware).
 Estrutura proposta na raiz:
 ```
 /android      → projeto Gradle (Kotlin)
-/esp32        → firmware (Arduino/PlatformIO, C++)
+/esp32        → firmware PlatformIO (C++)
 /design       → logo, mockups, paleta (usuário já está colocando arquivos aqui)
 /data-raw     → planilhas/CSVs originais antes da conversão
 PROJECT_NOTES.md
 ```
 Cada pasta de código tem sua própria toolchain isolada; `/design` e
-`/data-raw` ficam fora de qualquer build. **A confirmar**: usuário usa
-Arduino IDE ou PlatformIO pro ESP32 (só muda a organização interna de
-`/esp32`).
+`/data-raw` ficam fora de qualquer build.
 
 ## Em aberto / próximos passos
 
-1. Confirmar significado de `TYPE` (qual valor = radar fixo) e `DirType`
-   (função do campo) na fonte de dados, para fechar o script de conversão.
-2. Confirmar se o usuário usa Arduino IDE ou PlatformIO no `/esp32`.
-3. Criar o script/processo de conversão da planilha/CSV fonte para o
-   schema interno definido acima.
-4. Criar a estrutura inicial do projeto Android em `/android` (módulos
+1. Validar empiricamente o significado de `TYPE` e `DirType` no CSV real:
+   checar valores distintos presentes no arquivo (`TYPE` uniforme sugere
+   export já filtrado só para radar fixo; presença de `DirType=0` confirma
+   a hipótese de "ambos os sentidos"). Usuário não tem certeza do
+   significado, então a hipótese registrada acima precisa de validação
+   antes de travar a regra do `DirectionFilter`.
+2. Criar o script/processo de conversão do CSV fonte (formato iGO8/Amigo)
+   para o schema interno definido acima.
+3. Criar a estrutura inicial do projeto Android em `/android` (módulos
    listados acima, incluindo `HeadingTracker`/`DirectionFilter` e
    `SplashActivity`).
-5. Criar o firmware base do ESP32 em `/esp32` (recepção BT + parsing do
-   protocolo + lógica de display 320x170 + estado "somente velocidade" vs
-   "com radar próximo").
-6. Testar a lógica de proximidade, direção e suavização de velocidade antes
+4. Criar o firmware base do ESP32 em `/esp32` (PlatformIO; recepção BT +
+   parsing do protocolo + lógica de display 320x170 + estado "somente
+   velocidade" vs "com radar próximo").
+5. Testar a lógica de proximidade, direção e suavização de velocidade antes
    de integrar o Bluetooth (MVP sem hardware, só com logs/tela).
-7. Preparar o vídeo de splash (mp4) e os assets de layout do celular
+6. Preparar o vídeo de splash (mp4) e os assets de layout do celular
    (baseados na paleta da logo, já disponível em `/design`).
 
 ## Estado do repositório
