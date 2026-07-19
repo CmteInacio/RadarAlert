@@ -320,15 +320,44 @@ no Android Studio / compilar o firmware.
    anteriores com essa mesma placa Ideaspark.
 3. `res/raw/splash.mp4` (referenciado por `SplashActivity`) ainda não
    existe — falta adicionar o vídeo de splash.
-4. Gradle wrapper (`gradlew` + `gradle-wrapper.jar`) não foi gerado — ao
-   abrir o projeto no Android Studio, ele oferece para criar
-   automaticamente (ou rodar `gradle wrapper` uma vez).
+4. ~~Gradle wrapper não foi gerado~~ **Resolvido**: `gradlew`, `gradlew.bat`
+   e `gradle/wrapper/gradle-wrapper.jar` foram adicionados (ver "Wrapper do
+   Gradle" abaixo — era a causa raiz de o Android Studio não reconhecer o
+   projeto como Android e pedir "Java Main Class" ao rodar).
 5. (Opcional, baixa prioridade) Validar a hipótese de `DirType` cruzando
    2-3 pontos do CSV com o site comunitário de origem.
 6. Trocar `applicationId`/pacote (`com.radaralert.app`) se o usuário
    preferir outro nome, e revisar a URL do `GitCsvFetcher`
    (`raw.githubusercontent.com/CmteInacio/RadarAlert/main/...`) contra o
    branch real que vai hospedar os dados em produção.
+
+## Wrapper do Gradle (resolvido)
+
+O projeto foi criado sem `gradlew`/`gradlew.bat`/`gradle-wrapper.jar`. Sem
+isso, o Android Studio não consegue sincronizar o projeto como um projeto
+Gradle/Android de verdade — e ao tentar rodar, ele cai no comportamento de
+"rodar arquivo Kotlin avulso", que pede uma "Java Main Class" (por isso o
+erro relatado pelo usuário). Corrigido nesta sessão:
+- `gradle-wrapper.jar` extraído de uma instalação local do Gradle 8.14.3
+  (é um jar padrão, idêntico ao gerado por `gradle wrapper`).
+- `gradle-wrapper.properties` apontando para Gradle 8.7 (versão mínima
+  exigida pelo AGP 8.5.0 usado em `android/build.gradle.kts`).
+- `gradlew`/`gradlew.bat` escritos manualmente (scripts padrão, praticamente
+  inalterados entre versões recentes do Gradle).
+- Testado com `./gradlew --version` neste ambiente: o script funcionou
+  corretamente até a etapa de baixar a distribuição do Gradle — travou só
+  porque a política de rede deste sandbox bloqueia esse download específico
+  (não deve ocorrer na rede normal do usuário).
+
+**Depois de puxar essa atualização**: no Android Studio, feche e reabra o
+projeto (ou "File > Sync Project with Gradle Files") para ele detectar o
+wrapper e sincronizar de verdade — isso vai baixar o Gradle 8.7 e os plugins
+Android/Kotlin (precisa de internet, pode demorar alguns minutos na
+primeira vez). Depois disso, o dropdown de configuração de execução no
+topo do Studio deve mostrar "app" (com ícone do Android) em vez de pedir
+uma classe Java — se ainda pedir, é sinal de tentar rodar um arquivo `.kt`
+individual (clique na seta verde do arquivo) em vez de selecionar a
+configuração "app" e rodar num emulador/dispositivo.
 
 ## Estado do repositório
 
