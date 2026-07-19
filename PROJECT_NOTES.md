@@ -57,9 +57,8 @@ Waze**, que é o app principal usado hoje.
    prevê isso desde o início: um único fluxo de estado (`RadarState`) com
    múltiplos consumidores (Bluetooth sender, UI do celular, som).
 9. **Hardware do ESP32 definido**: placa Ideaspark com display colorido
-   320x170 (driver provável ST7789, via TFT_eSPI/LovyanGFX, em modo
-   paisagem). Precisa confirmar o pinout exato do modelo específico antes
-   de codar o firmware.
+   320x170, driver ST7789 via **TFT_eSPI**. Usuário já usou essa placa em
+   outros projetos e já tem a pinagem configurada — sem pendência aqui.
 10. **Vídeo de splash (mp4)** ao abrir o app Android — tela inicial com
     vídeo, depois segue para a tela principal.
 11. **Paleta visual baseada na logo** (anexada pelo usuário): fundo escuro,
@@ -80,6 +79,16 @@ Waze**, que é o app principal usado hoje.
     cruzá-lo, o aviso cessa. Também não deve alertar para radares na
     **pista contrária** (via dupla com canteiro). Ver seção "Alerta
     direcional" abaixo para o desenho da solução.
+15. **Fonte de dados já tem campo de sentido**: formato real da fonte do
+    usuário é `X,Y,TYPE,SPEED,DirType,Direction` (ex.:
+    `-54.580523,-20.480856,1,30,1,235`), onde `X`=longitude, `Y`=latitude,
+    `SPEED`=velocidade máxima, `Direction`=sentido em graus (0-359). Falta
+    confirmar o significado de `TYPE` (tipo de radar — precisa saber qual
+    valor corresponde a "fixo") e `DirType` (função ainda não identificada;
+    pode indicar se a via é dividida/o sentido é aplicável). Ver "Em aberto".
+16. **Repositório em monorepo**: projeto terá duas linguagens (Kotlin no
+    Android, C++ no firmware ESP32) no mesmo repositório. Estrutura definida
+    em "Convenção de pastas do repositório" abaixo.
 
 ## Principais dificuldades/pontos fracos identificados
 
@@ -169,14 +178,28 @@ presentation/
 ```
 
 ### Schema do CSV
+
+Formato bruto da fonte de dados do usuário:
+```csv
+X,Y,TYPE,SPEED,DirType,Direction
+-54.580523,-20.480856,1,30,1,235
+```
+Mapeamento para o schema interno do app:
+
+| Campo fonte | Campo interno      | Observação                              |
+|-------------|---------------------|------------------------------------------|
+| `X`         | `longitude`         | —                                        |
+| `Y`         | `latitude`          | —                                        |
+| `SPEED`     | `velocidade_maxima`  | —                                        |
+| `Direction` | `sentido`            | graus 0-359, usado pelo `DirectionFilter` |
+| `TYPE`      | `tipo`               | **a confirmar**: qual valor = "fixo"?     |
+| `DirType`   | (ainda não mapeado)  | **a confirmar**: função do campo          |
+
 ```csv
 id,rodovia,km,uf,latitude,longitude,velocidade_maxima,sentido,tipo,fonte,atualizado_em
 1,BR-101,220.5,SC,-27.5954,-48.5480,80,180,fixo,DNIT,2026-07-01
 2,BR-116,45.2,RS,-29.1685,-51.1795,60,0,fixo,DNIT,2026-07-01
 ```
-- `sentido`: rumo (graus 0-359) do tráfego que aquele radar fiscaliza — usado
-  pelo `DirectionFilter` para ignorar radar da pista contrária. **A confirmar
-  se a fonte de dados atual já fornece esse campo.**
 
 Um `VERSION.txt` (ou hash do commit) permite ao app comparar versão local x
 remota antes de baixar novamente.
@@ -204,31 +227,39 @@ SPEED:78;MAXSPEED:60;DIST:150;STATE:ORANGE\n
 - ESP32: Arduino core + `BluetoothSerial.h` + `TFT_eSPI`/`LovyanGFX` (ST7789,
   320x170, paisagem) para o display Ideaspark
 
-## Convenção de pastas do repositório
+## Convenção de pastas do repositório (monorepo)
 
-Só o que estiver dentro do módulo Android (`app/src/main/...`) entra na
-build/APK. Pastas na raiz do repo ficam versionadas mas fora da build:
-- `/design` → logo, mockups, referências visuais
-- `/data-raw` → planilhas originais (Excel do DNIT / outra fonte) antes da
-  conversão para o CSV usado pelo app
+Repositório único com duas linguagens (Kotlin no app, C++ no firmware).
+Estrutura proposta na raiz:
+```
+/android      → projeto Gradle (Kotlin)
+/esp32        → firmware (Arduino/PlatformIO, C++)
+/design       → logo, mockups, paleta (usuário já está colocando arquivos aqui)
+/data-raw     → planilhas/CSVs originais antes da conversão
+PROJECT_NOTES.md
+```
+Cada pasta de código tem sua própria toolchain isolada; `/design` e
+`/data-raw` ficam fora de qualquer build. **A confirmar**: usuário usa
+Arduino IDE ou PlatformIO pro ESP32 (só muda a organização interna de
+`/esp32`).
 
 ## Em aberto / próximos passos
 
-1. Confirmar se a fonte de dados atual fornece o campo **sentido** por
-   radar (necessário para o `DirectionFilter` ignorar a pista contrária).
-2. Levantar o pinout exato da placa Ideaspark específica usada (para
-   configurar `TFT_eSPI`/`LovyanGFX` corretamente).
-3. Criar o script/processo de conversão da planilha (DNIT + nova fonte de
-   velocidade máxima) para o CSV padrão definido acima.
-4. Criar a estrutura inicial do projeto Android (módulos listados acima,
-   incluindo `HeadingTracker`/`DirectionFilter` e `SplashActivity`).
-5. Criar o firmware base do ESP32 (recepção BT + parsing do protocolo +
-   lógica de display 320x170 + estado "somente velocidade" vs "com radar
-   próximo").
+1. Confirmar significado de `TYPE` (qual valor = radar fixo) e `DirType`
+   (função do campo) na fonte de dados, para fechar o script de conversão.
+2. Confirmar se o usuário usa Arduino IDE ou PlatformIO no `/esp32`.
+3. Criar o script/processo de conversão da planilha/CSV fonte para o
+   schema interno definido acima.
+4. Criar a estrutura inicial do projeto Android em `/android` (módulos
+   listados acima, incluindo `HeadingTracker`/`DirectionFilter` e
+   `SplashActivity`).
+5. Criar o firmware base do ESP32 em `/esp32` (recepção BT + parsing do
+   protocolo + lógica de display 320x170 + estado "somente velocidade" vs
+   "com radar próximo").
 6. Testar a lógica de proximidade, direção e suavização de velocidade antes
    de integrar o Bluetooth (MVP sem hardware, só com logs/tela).
 7. Preparar o vídeo de splash (mp4) e os assets de layout do celular
-   (baseados na paleta da logo).
+   (baseados na paleta da logo, já disponível em `/design`).
 
 ## Estado do repositório
 
