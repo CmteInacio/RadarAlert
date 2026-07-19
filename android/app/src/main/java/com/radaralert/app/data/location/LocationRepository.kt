@@ -2,6 +2,7 @@ package com.radaralert.app.data.location
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Looper
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -37,7 +38,7 @@ class LocationRepository(
         fun requestUpdates(intervalMillis: Long) {
             currentIntervalMillis = intervalMillis
             val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMillis).build()
-            client.requestLocationUpdates(request, callback, null)
+            client.requestLocationUpdates(request, callback, Looper.getMainLooper())
         }
 
         callback = object : LocationCallback() {
