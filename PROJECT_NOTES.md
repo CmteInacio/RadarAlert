@@ -1,8 +1,8 @@
 # RadarAlert — Notas do Projeto (memória de contexto)
 
 > Documento gerado para retomar o desenvolvimento em uma próxima sessão.
-> Última atualização: sessão 2 (após definição de hardware do ESP32 e alerta
-> direcional).
+> Última atualização: sessão 3 (depuração do primeiro build no Android
+> Studio).
 
 ## Objetivo do projeto
 
@@ -318,13 +318,10 @@ no Android Studio / compilar o firmware.
 2. `include/TFT_eSPI_User_Setup.h` no `/esp32` tem pinagem genérica de
    exemplo — substituir pela configuração real já usada em projetos
    anteriores com essa mesma placa Ideaspark.
-3. `res/raw/splash.mp4` era um arquivo inexistente e travava a compilação
-   (`Unresolved reference: raw` — o Android só gera a classe `R.raw` se
-   houver pelo menos um arquivo na pasta). **Criado um placeholder** (texto,
-   não é vídeo de verdade) só para destravar o build — como
-   `SplashActivity` já trata erro de reprodução (`setOnErrorListener`), ele
-   simplesmente pula pra tela principal quando o "vídeo" falha. Trocar
-   `android/app/src/main/res/raw/splash.mp4` pelo vídeo real quando tiver.
+3. ~~`res/raw/splash.mp4` não existia~~ **Resolvido**: o vídeo real do
+   usuário já está commitado em `android/app/src/main/res/raw/splash.mp4`
+   (~1,3MB, veio de um backup dele — ver "Sessão 3" abaixo pro histórico
+   completo do imprevisto).
 4. ~~Gradle wrapper não foi gerado~~ **Resolvido**: `gradlew`, `gradlew.bat`
    e `gradle/wrapper/gradle-wrapper.jar` foram adicionados (ver "Wrapper do
    Gradle" abaixo — era a causa raiz de o Android Studio não reconhecer o
@@ -335,6 +332,10 @@ no Android Studio / compilar o firmware.
    preferir outro nome, e revisar a URL do `GitCsvFetcher`
    (`raw.githubusercontent.com/CmteInacio/RadarAlert/main/...`) contra o
    branch real que vai hospedar os dados em produção.
+7. Build ainda não confirmado como 100% verde pelo usuário — última rodada
+   de `./gradlew assembleDebug --stacktrace` falhou por causa do item 3
+   (antes de resolvido). Próxima ação: usuário roda o build de novo agora
+   que o vídeo real está no lugar e reporta o resultado.
 
 ## Wrapper do Gradle (resolvido)
 
@@ -363,6 +364,51 @@ topo do Studio deve mostrar "app" (com ícone do Android) em vez de pedir
 uma classe Java — se ainda pedir, é sinal de tentar rodar um arquivo `.kt`
 individual (clique na seta verde do arquivo) em vez de selecionar a
 configuração "app" e rodar num emulador/dispositivo.
+
+## Sessão 3 — depuração do primeiro build no Android Studio
+
+Usuário abriu o projeto no Android Studio pela primeira vez e foi resolvendo
+uma cadeia de erros, um de cada vez:
+
+1. **"Java Main Class" ao rodar`** → causa raiz: faltava o Gradle wrapper
+   (não tinha sido gerado no scaffold inicial). Sem ele o Studio não
+   sincroniza o projeto como Android de verdade. Resolvido gerando
+   `gradlew`/`gradlew.bat`/`gradle-wrapper.jar` manualmente (ver seção
+   "Wrapper do Gradle" acima).
+2. **Ícone do Android com X vermelho / `RadarAlert.app.androidTest` inválido,
+   "Cannot obtain the package"** → faltava `testInstrumentationRunner` no
+   `defaultConfig` do `app/build.gradle.kts`. Adicionado
+   (`androidx.test.runner.AndroidJUnitRunner`) + dependências mínimas de
+   `androidTest` (`androidx.test.ext:junit`, `espresso-core`).
+3. **`JAVA_HOME is not set`** ao rodar `./gradlew` num terminal externo →
+   não é bug do projeto, é ambiente local: resolvido usando o terminal
+   embutido do Android Studio (que já usa o JDK dele) e ajustando o PATH.
+4. **Erro real de compilação**: `SplashActivity.kt:18:71 Unresolved
+   reference: raw` → `res/raw/splash.mp4` não existia (a classe `R.raw` só
+   é gerada se houver ao menos um arquivo na pasta `res/raw`). Criei um
+   placeholder de texto só pra destravar a compilação (o app cairia direto
+   pra tela principal, já que `SplashActivity` trata erro de reprodução).
+5. **Imprevisto à parte**: o usuário já tinha colocado o vídeo real na
+   pasta antes disso, mas nunca tinha commitado — ao "limpar o diretório"
+   antes de um `git pull`, o vídeo (não commitado) foi apagado do disco.
+   Como ele tinha feito backup por conta própria, restaurou o arquivo real
+   e substituiu o placeholder. **O vídeo real agora está commitado** em
+   `android/app/src/main/res/raw/splash.mp4`.
+6. Também durante essa sessão: o usuário tentou criar a pasta `/design`
+   pela interface web do GitHub digitando só `design` como nome, o que
+   criou um **arquivo vazio** (não uma pasta) — removido depois. Lição
+   registrada: pra criar pasta pelo GitHub web, o caminho completo do
+   arquivo precisa ser digitado (ex.: `design/logo.png`).
+
+**Lição de processo para não repetir**: arquivos binários grandes (vídeo,
+imagens) adicionados localmente devem ser commitados e enviados (`git add`
++ `commit` + `push`) o quanto antes — ficar com eles só no diretório de
+trabalho é frágil a qualquer limpeza/reset acidental.
+
+**Onde paramos**: aguardando o usuário rodar `./gradlew assembleDebug
+--stacktrace` (ou o Run do Studio) de novo agora que o vídeo real está
+commitado, para confirmar se o build passa limpo ou se aparece um próximo
+erro.
 
 ## Estado do repositório
 
