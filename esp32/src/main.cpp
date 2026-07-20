@@ -55,7 +55,9 @@ void drawBluetoothDisconnected(bool iconVisible) {
         tft.drawString("BT", tft.width() / 2, tft.height() / 2 - 20, 7);
     }
     tft.setTextColor(TFT_WHITE, COLOR_BACKGROUND);
+    tft.drawString(SerialBT.getBtAddressString(), tft.width() / 2, tft.height() / 2 + 10, 4);
     tft.drawString("reconectando...", tft.width() / 2, tft.height() / 2 + 30, 4);
+
 }
 
 void setup() {
