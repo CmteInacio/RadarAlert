@@ -48,7 +48,16 @@ class SpeedDisplayActivity : ComponentActivity() {
 
     private val requestPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { startForegroundServiceIfReady() }
+    ) { result ->
+        if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            startForegroundServiceIfReady()
+            requestBackgroundLocationIfNeeded()
+        }
+    }
+
+    private val requestBackgroundLocation = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* segundo plano é um extra; o serviço já roda com a localização em primeiro plano */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +72,6 @@ class SpeedDisplayActivity : ComponentActivity() {
     private fun ensurePermissionsThenStartService() {
         val required = buildList {
             add(Manifest.permission.ACCESS_FINE_LOCATION)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(Manifest.permission.BLUETOOTH_CONNECT)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -74,8 +82,18 @@ class SpeedDisplayActivity : ComponentActivity() {
 
         if (missing.isEmpty()) {
             startForegroundServiceIfReady()
+            requestBackgroundLocationIfNeeded()
         } else {
             requestPermissions.launch(missing.toTypedArray())
+        }
+    }
+
+    private fun requestBackgroundLocationIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestBackgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
 
