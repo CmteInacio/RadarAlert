@@ -62,6 +62,8 @@ class BluetoothRepository(
             true
         } catch (e: IOException) {
             false
+        } catch (e: SecurityException) {
+            false
         } finally {
             _connected.value = false
             closeQuietly()
