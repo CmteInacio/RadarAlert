@@ -1,12 +1,17 @@
 package com.radaralert.app.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.radaralert.app.R
 import com.radaralert.app.RadarAlertApp
 import com.radaralert.app.data.bluetooth.BluetoothRepository
@@ -41,7 +46,22 @@ class RadarForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_text_idle)))
+
+        val hasLocationPermission = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasLocationPermission) {
+            stopSelf()
+            return
+        }
+
+        val notification = buildNotification(getString(R.string.notification_text_idle))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
 
         locationRepository = LocationRepository(this)
         bluetoothRepository = BluetoothRepository(ESP32_MAC_ADDRESS, scope)
