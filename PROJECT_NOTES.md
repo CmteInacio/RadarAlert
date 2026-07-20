@@ -1,8 +1,8 @@
 # RadarAlert — Notas do Projeto (memória de contexto)
 
 > Documento gerado para retomar o desenvolvimento em uma próxima sessão.
-> Última atualização: sessão 3 (depuração do primeiro build no Android
-> Studio).
+> Última atualização: sessão 3 — **app rodando de ponta a ponta e
+> sincronizando com o ESP32 pela primeira vez.**
 
 ## Objetivo do projeto
 
@@ -428,10 +428,71 @@ imagens) adicionados localmente devem ser commitados e enviados (`git add`
 + `commit` + `push`) o quanto antes — ficar com eles só no diretório de
 trabalho é frágil a qualquer limpeza/reset acidental.
 
-**Onde paramos**: aguardando o usuário rodar `./gradlew assembleDebug
---stacktrace` (ou o Run do Studio) de novo agora que o vídeo real está
-commitado, para confirmar se o build passa limpo ou se aparece um próximo
-erro.
+9. **Ícone do app + config real do ESP32 chegaram juntos com ruído do
+   Studio**: usuário rodou o wizard "Image Asset" (gerou ícone real,
+   `ic_launcher_background.xml`, mipmaps reais, `.xcf` de origem) e ajustou
+   `esp32/include/TFT_eSPI_User_Setup.h`/`esp32/src/main.cpp` com a pinagem
+   real da placa — tudo isso bom e commitado. Mas junto veio uma pasta
+   `.idea/` **na raiz do repositório** (não em `android/.idea/` como o
+   `.gitignore` previa), porque o Studio foi aberto apontando pra raiz do
+   projeto, não para `/android`. Ficou commitada sem querer numa mensagem
+   anterior. **Corrigido**: `.gitignore` passou a cobrir `.idea/` e `*.iml`
+   em qualquer nível, e os arquivos já commitados foram removidos do
+   controle de versão (`git rm --cached`).
+10. **JDK incompatível**: `./gradlew` (rodado num terminal externo) estava
+    usando uma **JDK 25** do sistema (`/usr/lib/jvm/java-25-openjdk-amd64`),
+    versão recente demais pro Gradle 8.7/AGP 8.5.0, causando falhas
+    crípticas de build (mensagem de erro era só "25.0.3"). O "Gradle JDK"
+    do próprio Android Studio já estava correto (JBR 21.0.10 embutido) —
+    só o terminal externo precisou de `JAVA_HOME` apontado manualmente pro
+    JBR do Studio (`/opt/android-studio/jbr`).
+11. **Dois "quase-crashes" de build fantasma** (`Error loading build
+    artifacts from ... redirect.txt`) apareceram depois de mexidas grandes
+    (JDK, ícone) — em ambos os casos o build real (`./gradlew
+    assembleDebug`) estava OK; o problema era só o índice interno do
+    Studio desatualizado. Resolvido com `Sync Project with Gradle Files` +
+    rodar pelo botão Run do próprio Studio (não pelo terminal).
+12. **Terceiro crash de runtime**: `SecurityException: Need
+    android.permission.BLUETOOTH_SCAN ... cancelDiscovery()` — faltava
+    pedir `BLUETOOTH_SCAN` em runtime (só pedíamos `BLUETOOTH_CONNECT`).
+    **Corrigido**: `SpeedDisplayActivity` agora pede os dois juntos (API
+    31+); `BluetoothRepository.connectOnce()` também passou a capturar
+    `SecurityException` (antes só `IOException`), pra não crashar feio se
+    faltar permissão de novo.
+    - **Armadilha que se repetiu duas vezes nesta sessão**: depois de
+      corrigir um crash, o app continuava mostrando o **crash antigo,
+      idêntico linha por linha** — sinal de **build em cache/desatualizado**
+      no Studio, não de correção que não funcionou. Sempre que isso
+      acontecer: `git log --oneline -3` pra confirmar que o commit certo
+      está no local, depois `Build > Clean Project` + `Build > Rebuild
+      Project` (ou `./gradlew clean assembleDebug`) antes de julgar que a
+      correção não funcionou.
+
+## Marco alcançado: app rodando de ponta a ponta
+
+Depois de resolver essa cadeia de ~12 problemas (a maioria de ambiente/
+Android Studio, três bugs reais de código), o app **rodou completo e
+sincronizou com o ESP32 pela primeira vez** — GPS → `RadarStateEngine` →
+Bluetooth → firmware do ESP32 recebendo e exibindo os dados. Esse é o
+primeiro teste de ponta a ponta bem-sucedido do projeto.
+
+**Pendente de confirmação visual** (perguntei ao usuário, aguardando
+resposta): se o ESP32 está mostrando a velocidade atual corretamente, e se
+a tela do celular também está exibindo tudo certo (velocidade, cor de
+fundo, etc.) — já que o teste provavelmente foi feito fora do raio de
+qualquer radar cadastrado (RS/SC).
+
+**Onde paramos / próximos passos reais**:
+1. Confirmar visualmente que ambos os displays (celular e ESP32) mostram a
+   velocidade corretamente em uso contínuo (não só na sincronização
+   inicial).
+2. Testar a lógica de proximidade/direção de verdade — aproximar de um
+   ponto conhecido no CSV (ou editar temporariamente um radar de teste
+   pras coordenadas atuais do usuário) pra validar as cores e o
+   aproxima→cruza→cessa na prática.
+3. Itens antigos ainda em aberto (baixa prioridade): validar a hipótese de
+   `DirType` no site comunitário; revisar a URL do `GitCsvFetcher` contra
+   o branch real de produção.
 
 ## Estado do repositório
 
