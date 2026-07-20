@@ -399,6 +399,29 @@ uma cadeia de erros, um de cada vez:
    criou um **arquivo vazio** (não uma pasta) — removido depois. Lição
    registrada: pra criar pasta pelo GitHub web, o caminho completo do
    arquivo precisa ser digitado (ex.: `design/logo.png`).
+7. **App rodou e fechou sozinho** — `NullPointerException: invalid null
+   looper` em `LocationRepository.requestLocationUpdates`. Bug real: o
+   código passava `null` como `Looper`, o que só funciona se a chamada
+   partir de uma thread com Looper (ex.: a principal); a chamada rodava
+   numa coroutine em `Dispatchers.Default` (sem Looper). **Corrigido**:
+   passa `Looper.getMainLooper()` explicitamente.
+8. **Segundo crash**: `SecurityException` ao iniciar o
+   `RadarForegroundService` como foreground do tipo `location` sem a
+   permissão de localização concedida. Bug real: o callback do pedido de
+   permissões em `SpeedDisplayActivity` chamava
+   `startForegroundServiceIfReady()` **sem checar se a permissão foi de
+   fato concedida** (só olhava se a lista de permissões faltantes estava
+   vazia antes de pedir, nunca o resultado do pedido). **Corrigido**: o
+   serviço só inicia se `ACCESS_FINE_LOCATION` estiver de fato concedida
+   no resultado; e `ACCESS_BACKGROUND_LOCATION` passou a ser pedida
+   separadamente, depois da localização em primeiro plano já concedida
+   (nunca junto no mesmo lote — no Android 11+ isso é a prática recomendada
+   e evita comportamento inconsistente do diálogo do sistema).
+   **Se o app continuar fechando na mesma tela**: pode ser que a permissão
+   tenha ficado marcada como "negada permanentemente" da tentativa anterior
+   que crashou — nesse caso o Android para de mostrar o diálogo, e é
+   preciso liberar manualmente em Configurações do Android > Apps >
+   RadarAlert > Permissões, ou desinstalar e reinstalar o app.
 
 **Lição de processo para não repetir**: arquivos binários grandes (vídeo,
 imagens) adicionados localmente devem ser commitados e enviados (`git add`
