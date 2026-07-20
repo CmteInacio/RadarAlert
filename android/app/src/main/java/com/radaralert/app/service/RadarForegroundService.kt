@@ -136,7 +136,7 @@ class RadarForegroundService : Service() {
         private const val NOTIFICATION_ID = 1
 
         // TODO: mover para uma tela de configuração/pareamento em vez de fixo no código.
-        private const val ESP32_MAC_ADDRESS = "4c:11:ae:f9:c3:a4"
+        private const val ESP32_MAC_ADDRESS = "4C:11:AE:F9:C3:A6"
 
         private val _displayState = MutableStateFlow(
             DisplayState(RadarState(0, null, null, ProximityColor.NONE), bluetoothConnected = false)
