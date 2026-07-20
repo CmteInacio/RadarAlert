@@ -1,10 +1,11 @@
-# Android
+# Android Studio / IntelliJ (o Studio às vezes cria isso na raiz do repo,
+# não só dentro de android/, dependendo de como o projeto é aberto)
+.idea/
+*.iml
 android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
-android/.idea/
-android/*.iml
 
 # ESP32 / PlatformIO
 esp32/.pio/
