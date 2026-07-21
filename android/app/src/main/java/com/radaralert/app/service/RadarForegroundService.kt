@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -45,6 +46,14 @@ class RadarForegroundService : Service() {
     private val stateEngine = RadarStateEngine()
 
     private var radars: List<RadarPoint> = emptyList()
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        return START_STICKY
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -133,11 +142,17 @@ class RadarForegroundService : Service() {
         val channel = NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel_name), NotificationManager.IMPORTANCE_LOW)
         manager.createNotificationChannel(channel)
 
+        val stopIntent = Intent(this, RadarForegroundService::class.java).setAction(ACTION_STOP)
+        val stopPendingIntent = PendingIntent.getService(
+            this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
+            .addAction(0, "Parar", stopPendingIntent)
             .build()
     }
 
@@ -151,6 +166,7 @@ class RadarForegroundService : Service() {
     companion object {
         private const val CHANNEL_ID = "radar_alert_service"
         private const val NOTIFICATION_ID = 1
+        private const val ACTION_STOP = "com.radaralert.app.action.STOP"
 
         // TODO: mover para uma tela de configuração/pareamento em vez de fixo no código.
         private const val ESP32_MAC_ADDRESS = "4C:11:AE:F9:C3:A6"

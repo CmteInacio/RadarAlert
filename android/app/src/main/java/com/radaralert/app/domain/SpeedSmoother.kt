@@ -1,6 +1,6 @@
 package com.radaralert.app.domain
 
-class SpeedSmoother(private val windowSize: Int = 4) {
+class SpeedSmoother(private val windowSize: Int = 2) {
     private val readings = ArrayDeque<Double>()
 
     fun addAndSmooth(speedKmh: Double): Double {
