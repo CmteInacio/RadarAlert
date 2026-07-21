@@ -1,8 +1,10 @@
 # RadarAlert — Notas do Projeto (memória de contexto)
 
 > Documento gerado para retomar o desenvolvimento em uma próxima sessão.
-> Última atualização: sessão 3 — **app rodando de ponta a ponta e
-> sincronizando com o ESP32 pela primeira vez.**
+> Última atualização: sessão 3 — app rodando de ponta a ponta, testado na
+> estrada; **adicionado sistema de tipos de alerta (radar/lombada/polícia/
+> pedágio), status de conexão na tela e limpeza de pareamento do ESP32
+> revertida pra não ser automática.**
 
 ## Objetivo do projeto
 
@@ -482,17 +484,98 @@ a tela do celular também está exibindo tudo certo (velocidade, cor de
 fundo, etc.) — já que o teste provavelmente foi feito fora do raio de
 qualquer radar cadastrado (RS/SC).
 
-**Onde paramos / próximos passos reais**:
-1. Confirmar visualmente que ambos os displays (celular e ESP32) mostram a
-   velocidade corretamente em uso contínuo (não só na sincronização
-   inicial).
-2. Testar a lógica de proximidade/direção de verdade — aproximar de um
-   ponto conhecido no CSV (ou editar temporariamente um radar de teste
-   pras coordenadas atuais do usuário) pra validar as cores e o
-   aproxima→cruza→cessa na prática.
-3. Itens antigos ainda em aberto (baixa prioridade): validar a hipótese de
-   `DirType` no site comunitário; revisar a URL do `GitCsvFetcher` contra
-   o branch real de produção.
+## Teste na estrada (sessão 3, continuação)
+
+Resultado do primeiro teste real fora de bancada:
+- **Detecção de radar e cor de fundo funcionaram** — o app identificou o
+  radar e mudou a cor conforme a aproximação.
+- **Bluetooth caiu no carro** (conectava em bancada, mas não no carro; BT
+  do ESP32 aparecia no Android com opção de "Parear", ou seja, os
+  dispositivos não estavam de fato pareados no nível do sistema).
+- **App não avisou de outro radar** que o usuário passou — investigado e
+  a causa raiz era estrutural: o **repositório do GitHub estava privado**,
+  e `raw.githubusercontent.com` não serve arquivos de repositório privado
+  sem autenticação. Ou seja, o app nunca conseguiu baixar a lista de
+  radares desde o início (a busca sempre falhava/404) — não era sobre
+  aquele radar específico. **Resolvido**: usuário tornou o repositório
+  público pela própria interface web do GitHub (o app oficial de celular
+  não tem essa opção). Também faltava o branch `main` (só existia o de
+  desenvolvimento) — criado a partir do branch de trabalho.
+- **Falha de pareamento Bluetooth**: monitor serial do ESP32 mostrou
+  `[E][BluetoothSerial.cpp:528] esp_bt_gap_cb(): authentication failed,
+  status:10` (`ESP_BT_STATUS_AUTH_FAILURE`) — sintoma clássico de chave de
+  pareamento desincronizada entre os dois lados (o Android "esquece" o
+  dispositivo, mas o ESP32 guarda a chave antiga na flash/NVS).
+  **Resolvido temporariamente** adicionando `clearBondedDevices()` no
+  `setup()` do firmware (limpa os pareamentos salvos no ESP32 usando as
+  APIs `esp_bt_gap_*`). Depois de confirmar que resolveu, a chamada foi
+  **comentada de novo** (mantendo a função disponível) — porque rodar isso
+  em todo boot forçaria repareamento toda vez que o ESP32 ligasse (impraticável
+  no carro). Só descomentar se o erro `status:10` voltar a acontecer.
+- **Reconexão automática confirmada**: a conexão caiu durante o teste e
+  reconectou sozinha, validando a lógica de backoff do `BluetoothRepository`.
+- **Sequência de conexão identificada pelo usuário** (primeira vez com um
+  ESP32 novo/resetado): 1) liga o ESP32, 2) localiza pelo Bluetooth do
+  Android, 3) pareia, 4) só depois abre o app. Com o pareamento já feito
+  uma vez (e sem o `clearBondedDevices()` ativo), esperado que isso passe
+  a persistir entre boots normalmente.
+
+## Novidades pedidas pelo usuário após o teste (implementadas nesta sessão)
+
+1. **Som/bipe**: usuário perguntou por que não ouviu nenhum som — esclarecido
+   que isso **nunca foi implementado** (só foi cogitado como plano B lá no
+   início da conversa). Ainda pendente, não é bug.
+2. **Tipos de alerta configuráveis**: adicionado `TipoAlerta` (enum:
+   `RADAR_FIXO`, `LOMBADA_ELETRONICA`, `POLICIA_RODOVIARIA`, `PEDAGIO`) como
+   campo de `RadarPoint`. Schema do CSV ganhou a coluna `tipo` (via
+   `tools/convert_radares.py`, que agora aceita um 3º argumento opcional
+   com o tipo a usar na conversão — por enquanto só temos dados de
+   `RADAR_FIXO`; usuário vai mandar arquivos de lombada/polícia/pedágio
+   depois). `AlertaTypePrefs` (SharedPreferences) guarda quais tipos estão
+   ativos (todos por padrão); `RadarForegroundService` filtra os radares
+   carregados por esses tipos antes de repassar ao `RadarStateEngine`.
+   Nova tela `AlertTypeSettingsActivity` (acessível pelo ícone de
+   engrenagem na tela principal) com checkbox por tipo — ao salvar,
+   reinicia o serviço pra aplicar o filtro na hora. **Objetivo prático**:
+   permitir testar com lombada/pedágio/polícia dentro da cidade, sem
+   depender de passar por um radar de rodovia.
+3. **Status tipo checklist**: 
+   - No app Android: texto de status abaixo da velocidade —
+     "Sincronizando lista de radares..." / "Aguardando conexão com o
+     ESP32..." / "Conectado ao ESP32" — e o rótulo do tipo de alerta
+     (ex.: "Lombada eletrônica") junto do limite de velocidade.
+   - No ESP32: tela de espera agora diferencia primeira conexão
+     ("Aguardando conexão") de reconexão ("Conexão perdida"), e a tela de
+     alerta mostra o tipo (`RADAR FIXO`, `LOMBADA ELETRONICA`, `POLICIA
+     RODOVIARIA`, `PEDAGIO`) embaixo do limite de velocidade.
+4. **Protocolo Bluetooth estendido**: adicionado campo `TYPE` na mensagem
+   (`SPEED:...;MAXSPEED:...;DIST:...;STATE:...;TYPE:RADAR`), mapeado de
+   `TipoAlerta` pro código curto que o ESP32 exibe.
+5. **Room**: `fallbackToDestructiveMigration()` adicionado no
+   `RadarAlertApp` — como o schema do banco local mudou (`tipo` na tabela
+   `radares`), isso evita crash por migração ausente; só recria o cache
+   local, que é ressincronizado do zero na próxima abertura do app.
+
+**Como validar essas novidades**: usuário vai mandar arquivos de outras
+categorias (lombada, polícia rodoviária, pedágio) pra rodar o
+`convert_radares.py` com o tipo certo; ainda em aberto decidir a estratégia
+de mesclar múltiplos arquivos de tipos diferentes em um único
+`data/radares_rs_sc.csv` (hoje o script sobrescreve o arquivo de saída a
+cada execução — funciona para um tipo por vez, mas precisa de ajuste
+quando houver mais de uma fonte).
+
+## Próximos passos reais
+
+1. Confirmar que o Bluetooth volta a persistir entre boots do ESP32 agora
+   que `clearBondedDevices()` está comentado.
+2. Testar os novos tipos de alerta assim que o usuário mandar os arquivos
+   de lombada/polícia/pedágio — decidir e implementar a estratégia de
+   mesclar múltiplas fontes no `convert_radares.py`.
+3. Testar a tela de configurações (`AlertTypeSettingsActivity`) na prática
+   — confirmar que desmarcar um tipo realmente filtra os alertas.
+4. Implementar o som/bipe (ainda não feito).
+5. Itens antigos ainda em aberto (baixa prioridade): validar a hipótese de
+   `DirType` no site comunitário.
 
 ## Estado do repositório
 

@@ -10,7 +10,7 @@ class DirectionFilterTest {
     private val filter = DirectionFilter()
 
     private fun radar(sentido: SentidoTipo, direcao: Double) =
-        RadarPoint(id = 1, latitude = -29.0, longitude = -51.0, speedLimitKmh = 60, sentidoTipo = sentido, direcaoGraus = direcao)
+        RadarPoint(id = 1, latitude = -29.0, longitude = -51.0, speedLimitKmh = 60, sentidoTipo = sentido, direcaoGraus = direcao, tipo = TipoAlerta.RADAR_FIXO)
 
     @Test
     fun `unico is candidate only when heading matches direction`() {
@@ -35,7 +35,7 @@ class DirectionFilterTest {
 
     @Test
     fun `approach state flips to passed once radar is behind`() {
-        val radar = RadarPoint(1, latitude = 0.0, longitude = 1.0, speedLimitKmh = 60, sentidoTipo = SentidoTipo.DESCONHECIDO, direcaoGraus = 0.0)
+        val radar = RadarPoint(1, latitude = 0.0, longitude = 1.0, speedLimitKmh = 60, sentidoTipo = SentidoTipo.DESCONHECIDO, direcaoGraus = 0.0, tipo = TipoAlerta.RADAR_FIXO)
 
         // Usuário em (0,0) indo para leste (bearing 90) -> radar em (0,1) está à frente.
         assertEquals(

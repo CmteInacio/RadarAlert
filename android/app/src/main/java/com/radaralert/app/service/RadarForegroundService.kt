@@ -20,6 +20,7 @@ import com.radaralert.app.domain.ProximityColor
 import com.radaralert.app.domain.RadarPoint
 import com.radaralert.app.domain.RadarState
 import com.radaralert.app.domain.RadarStateEngine
+import com.radaralert.app.domain.TipoAlerta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,7 +31,8 @@ import kotlinx.coroutines.launch
 
 data class DisplayState(
     val radarState: RadarState,
-    val bluetoothConnected: Boolean
+    val bluetoothConnected: Boolean,
+    val syncingRadars: Boolean = false
 )
 
 class RadarForegroundService : Service() {
@@ -68,9 +70,12 @@ class RadarForegroundService : Service() {
         bluetoothRepository.start()
 
         scope.launch {
+            _displayState.value = _displayState.value.copy(syncingRadars = true)
             val app = application as RadarAlertApp
             app.radarRepository.syncIfNeeded()
-            radars = app.radarRepository.getAllRadars()
+            val enabledTypes = app.alertaTypePrefs.getEnabledTypes()
+            radars = app.radarRepository.getAllRadars().filter { it.tipo in enabledTypes }
+            _displayState.value = _displayState.value.copy(syncingRadars = false)
         }
 
         scope.launch {
@@ -91,14 +96,26 @@ class RadarForegroundService : Service() {
     private fun locationSamples() = locationRepository.observeLocation()
 
     private fun publish(displayState: DisplayState) {
-        _displayState.value = displayState
+        _displayState.value = _displayState.value.copy(
+            radarState = displayState.radarState,
+            bluetoothConnected = displayState.bluetoothConnected
+        )
         bluetoothRepository.send(
             speedKmh = displayState.radarState.speedKmh,
             maxSpeedKmh = displayState.radarState.nearestRadar?.speedLimitKmh,
             distanceMeters = displayState.radarState.distanceMeters?.toInt(),
-            state = displayState.radarState.color.name
+            state = displayState.radarState.color.name,
+            alertType = wireCodeFor(displayState.radarState.nearestRadar?.tipo)
         )
         updateNotification(displayState.radarState)
+    }
+
+    private fun wireCodeFor(tipo: TipoAlerta?): String = when (tipo) {
+        TipoAlerta.RADAR_FIXO -> "RADAR"
+        TipoAlerta.LOMBADA_ELETRONICA -> "LOMBADA"
+        TipoAlerta.POLICIA_RODOVIARIA -> "POLICIA"
+        TipoAlerta.PEDAGIO -> "PEDAGIO"
+        null -> "NONE"
     }
 
     private fun updateNotification(state: RadarState) {

@@ -30,6 +30,14 @@ uint16_t colorForState(const String& state) {
     return COLOR_BACKGROUND;
 }
 
+String labelForAlertType(const String& type) {
+    if (type == "RADAR") return "RADAR FIXO";
+    if (type == "LOMBADA") return "LOMBADA ELETRONICA";
+    if (type == "POLICIA") return "POLICIA RODOVIARIA";
+    if (type == "PEDAGIO") return "PEDAGIO";
+    return "";
+}
+
 void drawIdleOrAlert() {
     bool hasRadar = lastMessage.state != "NONE" && lastMessage.maxSpeedKmh >= 0;
     uint16_t background = hasRadar ? colorForState(lastMessage.state) : COLOR_BACKGROUND;
@@ -46,26 +54,40 @@ void drawIdleOrAlert() {
     if (hasRadar) {
         tft.setTextColor(TFT_WHITE, background);
         String limite = "Limite " + String(lastMessage.maxSpeedKmh) + " km/h";
-        tft.drawString(limite, tft.width() / 2, tft.height() - 20, 4);
+        tft.drawString(limite, tft.width() / 2, tft.height() - 45, 4);
+
+        String label = labelForAlertType(lastMessage.alertType);
+        if (label != "") {
+            tft.drawString(label, tft.width() / 2, tft.height() - 20, 2);
+        }
     }
 }
 
-void drawBluetoothDisconnected(bool iconVisible) {
+// Tela de status enquanto não há stream de dados do app. Diferencia a
+// primeira espera (nunca conectou) de uma reconexão (já esteve conectado
+// e caiu), como um checklist simples de onde o ESP32 está no processo.
+void drawStatus(bool iconVisible) {
     tft.fillScreen(COLOR_BACKGROUND);
     tft.setTextDatum(MC_DATUM);
     if (iconVisible) {
         tft.setTextColor(COLOR_RED, COLOR_BACKGROUND);
-        tft.drawString("BT", tft.width() / 2, tft.height() / 2 - 20, 7);
+        tft.drawString("BT", tft.width() / 2, tft.height() / 2 - 30, 7);
     }
-    tft.setTextColor(TFT_WHITE, COLOR_BACKGROUND);
-    tft.drawString(SerialBT.getBtAddressString(), tft.width() / 2, tft.height() / 2 + 10, 4);
-    tft.drawString("reconectando...", tft.width() / 2, tft.height() / 2 + 30, 4);
 
+    tft.setTextColor(TFT_WHITE, COLOR_BACKGROUND);
+    String linha1 = everConnected ? "Conexao perdida" : "Aguardando conexao";
+    tft.drawString(linha1, tft.width() / 2, tft.height() / 2 + 10, 4);
+
+    tft.setTextColor(COLOR_CYAN, COLOR_BACKGROUND);
+    tft.drawString(SerialBT.getBtAddressString(), tft.width() / 2, tft.height() / 2 + 32, 2);
+    tft.drawString("Tentando reconectar...", tft.width() / 2, tft.height() / 2 + 50, 2);
 }
 
-// Limpa todos os dispositivos pareados salvos na flash do ESP32. Evita o
-// erro "authentication failed, status:10" quando o celular é despareado e
-// pareado de novo, mas o ESP32 ainda guarda a chave antiga.
+// Limpa todos os dispositivos pareados salvos na flash do ESP32. Deixado
+// comentado depois de resolver um "authentication failed, status:10"
+// causado por chave de pareamento desatualizada — só descomentar de novo
+// se o mesmo erro voltar a acontecer, já que rodar isso toda vez que liga
+// obrigaria a reparear o celular a cada boot.
 void clearBondedDevices() {
     int count = esp_bt_gap_get_bond_device_num();
     if (count <= 0) return;
@@ -80,11 +102,11 @@ void clearBondedDevices() {
 void setup() {
     Serial.begin(115200);
     SerialBT.begin("RadarAlert-ESP32");
-    clearBondedDevices();
+    // clearBondedDevices();
 
     tft.init();
     tft.setRotation(1); // paisagem, 320x170
-    drawBluetoothDisconnected(true);
+    drawStatus(true);
 }
 
 void loop() {
@@ -109,7 +131,7 @@ void loop() {
     bool timedOut = everConnected && (millis() - lastMessageMillis > BT_TIMEOUT_MILLIS);
     if (!connected || timedOut) {
         bool iconVisible = (millis() / 500) % 2 == 0;
-        drawBluetoothDisconnected(iconVisible);
+        drawStatus(iconVisible);
         delay(150);
     }
 }

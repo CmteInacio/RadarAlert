@@ -2,13 +2,15 @@
 #include <Arduino.h>
 
 // Protocolo de texto simples enviado pelo app Android via Bluetooth SPP:
-// "SPEED:78;MAXSPEED:60;DIST:150;STATE:ORANGE\n"
+// "SPEED:78;MAXSPEED:60;DIST:150;STATE:ORANGE;TYPE:LOMBADA\n"
 // Um "PING\n" isolado é só o heartbeat de manter-conexão-viva.
+// TYPE: RADAR, LOMBADA, POLICIA, PEDAGIO ou NONE (sem alerta ativo).
 struct RadarMessage {
     int speedKmh = 0;
     int maxSpeedKmh = -1;
     int distanceMeters = -1;
     String state = "NONE";
+    String alertType = "NONE";
 };
 
 inline bool parseRadarMessage(const String& line, RadarMessage& out) {
@@ -18,6 +20,7 @@ inline bool parseRadarMessage(const String& line, RadarMessage& out) {
     int maxSpeed = -1;
     int dist = -1;
     String state = "NONE";
+    String alertType = "NONE";
 
     int start = 0;
     while (start < (int)line.length()) {
@@ -32,6 +35,7 @@ inline bool parseRadarMessage(const String& line, RadarMessage& out) {
             else if (key == "MAXSPEED") maxSpeed = value.toInt();
             else if (key == "DIST") dist = value.toInt();
             else if (key == "STATE") state = value;
+            else if (key == "TYPE") alertType = value;
         }
 
         if (sep == -1) break;
@@ -42,5 +46,6 @@ inline bool parseRadarMessage(const String& line, RadarMessage& out) {
     out.maxSpeedKmh = maxSpeed;
     out.distanceMeters = dist;
     out.state = state;
+    out.alertType = alertType;
     return true;
 }

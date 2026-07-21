@@ -70,12 +70,13 @@ class BluetoothRepository(
         }
     }
 
-    fun send(speedKmh: Int, maxSpeedKmh: Int?, distanceMeters: Int?, state: String) {
+    fun send(speedKmh: Int, maxSpeedKmh: Int?, distanceMeters: Int?, state: String, alertType: String) {
         val line = buildString {
             append("SPEED:").append(speedKmh)
             append(";MAXSPEED:").append(maxSpeedKmh ?: -1)
             append(";DIST:").append(distanceMeters ?: -1)
             append(";STATE:").append(state)
+            append(";TYPE:").append(alertType)
         }
         sendLine(line)
     }

@@ -26,8 +26,12 @@ DIR_TYPE_MAP = {
 
 FONTE = "iGO8/Amigo - mapa de radar"
 
+# Tipos aceitos (ver com.radaralert.app.domain.TipoAlerta no app):
+# RADAR_FIXO, LOMBADA_ELETRONICA, POLICIA_RODOVIARIA, PEDAGIO
+TIPO_PADRAO = "RADAR_FIXO"
 
-def convert(input_path: Path, output_path: Path) -> tuple[int, int]:
+
+def convert(input_path: Path, output_path: Path, tipo: str = TIPO_PADRAO) -> tuple[int, int]:
     rows_out = []
     total = 0
     with input_path.open(newline="", encoding="utf-8") as f_in:
@@ -47,6 +51,7 @@ def convert(input_path: Path, output_path: Path) -> tuple[int, int]:
                     "velocidade_maxima": int(row["SPEED"]),
                     "sentido_tipo": dir_type,
                     "direcao_graus": float(row["Direction"]),
+                    "tipo": tipo,
                     "fonte": FONTE,
                     "atualizado_em": date.today().isoformat(),
                 }
@@ -63,6 +68,7 @@ def convert(input_path: Path, output_path: Path) -> tuple[int, int]:
                 "velocidade_maxima",
                 "sentido_tipo",
                 "direcao_graus",
+                "tipo",
                 "fonte",
                 "atualizado_em",
             ],
@@ -82,8 +88,9 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parent.parent
     input_path = Path(sys.argv[1]) if len(sys.argv) > 1 else repo_root / "data-raw" / "RadarFixo_maparadar.csv"
     output_path = Path(sys.argv[2]) if len(sys.argv) > 2 else repo_root / "data" / "radares_rs_sc.csv"
+    tipo = sys.argv[3] if len(sys.argv) > 3 else TIPO_PADRAO
 
-    total, kept = convert(input_path, output_path)
+    total, kept = convert(input_path, output_path, tipo)
     write_version(output_path, output_path.parent / "VERSION.txt")
 
     print(f"Lidos: {total}")

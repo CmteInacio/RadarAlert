@@ -15,7 +15,8 @@ class RadarStateEngineTest {
         longitude = 0.0,
         speedLimitKmh = 60,
         sentidoTipo = SentidoTipo.DESCONHECIDO,
-        direcaoGraus = 0.0
+        direcaoGraus = 0.0,
+        tipo = TipoAlerta.RADAR_FIXO
     )
 
     @Test

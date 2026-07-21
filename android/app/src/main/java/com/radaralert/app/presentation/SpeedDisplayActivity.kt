@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,10 +32,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.radaralert.app.domain.ProximityColor
+import com.radaralert.app.domain.TipoAlerta
 import com.radaralert.app.service.DisplayState
 import com.radaralert.app.service.RadarForegroundService
 
@@ -106,9 +110,23 @@ class SpeedDisplayActivity : ComponentActivity() {
     }
 }
 
+private fun labelFor(tipo: TipoAlerta): String = when (tipo) {
+    TipoAlerta.RADAR_FIXO -> "Radar fixo"
+    TipoAlerta.LOMBADA_ELETRONICA -> "Lombada eletrônica"
+    TipoAlerta.POLICIA_RODOVIARIA -> "Polícia rodoviária"
+    TipoAlerta.PEDAGIO -> "Pedágio"
+}
+
+private fun statusTextFor(displayState: DisplayState): String = when {
+    displayState.syncingRadars -> "Sincronizando lista de radares..."
+    !displayState.bluetoothConnected -> "Aguardando conexão com o ESP32..."
+    else -> "Conectado ao ESP32"
+}
+
 @Composable
 private fun RadarAlertScreen(displayState: DisplayState) {
     val radarState = displayState.radarState
+    val context = LocalContext.current
 
     val backgroundColor by animateColorAsState(
         targetValue = when (radarState.color) {
@@ -141,11 +159,30 @@ private fun RadarAlertScreen(displayState: DisplayState) {
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(top = 24.dp)
                 )
+                Text(
+                    text = labelFor(radar.tipo),
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
+
+            Text(
+                text = statusTextFor(displayState),
+                fontSize = 14.sp,
+                color = AccentCyan,
+                modifier = Modifier.padding(top = 32.dp)
+            )
         }
 
         if (!displayState.bluetoothConnected) {
             BluetoothDisconnectedIndicator(modifier = Modifier.align(Alignment.TopCenter).padding(top = 32.dp))
+        }
+
+        IconButton(
+            onClick = { context.startActivity(Intent(context, AlertTypeSettingsActivity::class.java)) },
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+        ) {
+            Icon(imageVector = Icons.Filled.Settings, contentDescription = "Configurações", tint = AccentCyan)
         }
     }
 }

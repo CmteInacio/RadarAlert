@@ -2,7 +2,7 @@ package com.radaralert.app.data.radar
 
 /**
  * Faz o parse do CSV interno gerado por tools/convert_radares.py:
- * id,latitude,longitude,velocidade_maxima,sentido_tipo,direcao_graus,fonte,atualizado_em
+ * id,latitude,longitude,velocidade_maxima,sentido_tipo,direcao_graus,tipo,fonte,atualizado_em
  */
 object RadarCsvParser {
 
@@ -18,7 +18,8 @@ object RadarCsvParser {
                 longitude = columns[2].trim().toDouble(),
                 velocidadeMaxima = columns[3].trim().toInt(),
                 sentidoTipo = columns[4].trim(),
-                direcaoGraus = columns[5].trim().toDouble()
+                direcaoGraus = columns[5].trim().toDouble(),
+                tipo = columns[6].trim()
             )
         }
     }
