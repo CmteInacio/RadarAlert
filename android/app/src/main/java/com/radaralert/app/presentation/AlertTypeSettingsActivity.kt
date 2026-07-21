@@ -11,18 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.radaralert.app.RadarAlertApp
 import com.radaralert.app.domain.TipoAlerta
 import com.radaralert.app.service.RadarForegroundService
-
+private val WhiteColor = Color(0xFFFFFFFF)
 private fun labelFor(tipo: TipoAlerta): String = when (tipo) {
     TipoAlerta.RADAR_FIXO -> "Radar fixo"
     TipoAlerta.LOMBADA_ELETRONICA -> "Lombada eletrônica"
@@ -51,7 +51,7 @@ class AlertTypeSettingsActivity : ComponentActivity() {
                                 enabled = if (checked) enabled + tipo else enabled - tipo
                             }
                         )
-                        Text(text = labelFor(tipo))
+                        Text(text = labelFor(tipo), color = WhiteColor)
                     }
                 }
 
