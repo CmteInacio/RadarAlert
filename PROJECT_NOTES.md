@@ -556,25 +556,63 @@ Resultado do primeiro teste real fora de bancada:
    `radares`), isso evita crash por migração ausente; só recria o cache
    local, que é ressincronizado do zero na próxima abertura do app.
 
-**Como validar essas novidades**: usuário vai mandar arquivos de outras
-categorias (lombada, polícia rodoviária, pedágio) pra rodar o
-`convert_radares.py` com o tipo certo; ainda em aberto decidir a estratégia
-de mesclar múltiplos arquivos de tipos diferentes em um único
-`data/radares_rs_sc.csv` (hoje o script sobrescreve o arquivo de saída a
-cada execução — funciona para um tipo por vez, mas precisa de ajuste
-quando houver mais de uma fonte).
+## Dados de lombada/polícia/pedágio recebidos e mesclados
+
+Usuário mandou os 3 arquivos (mesmo site, mesmo formato iGO8/Amigo):
+`Lombada_maparadar.csv`, `PoliciaRodoviaria_maparadar.csv`,
+`Pedagio_maparadar.csv` (salvos em `/data-raw`). Descoberta importante: cada
+categoria usa um **código `TYPE` fixo e diferente** no arquivo de origem —
+`1` = radar fixo, `7` = polícia rodoviária, `8` = lombada eletrônica,
+`14` = pedágio. Isso eliminou a necessidade de indicar o tipo manualmente
+por arquivo.
+
+`tools/convert_radares.py` foi reescrito: agora lê **todos** os
+`*_maparadar.csv` de `/data-raw` (ou uma lista explícita passada por
+argumento), detecta o tipo automaticamente pelo código `TYPE`
+(`TYPE_TO_TIPO`), e mescla tudo num único `data/radares_rs_sc.csv`.
+Resultado da primeira mesclagem real: **4.941 pontos** dentro do bounding
+box RS/SC — 3.304 lombadas, 1.359 radares fixos, 192 polícia rodoviária,
+86 pedágios. `SPEED` vem `0` nas categorias que não têm limite associado
+(lombada/polícia/pedágio) — o app já trata isso normalmente (mostra o
+limite só quando > 0 faz sentido; não chegou a ser um problema até agora).
+
+**Importante**: o branch `main` (de onde o `GitCsvFetcher` baixa os dados)
+precisa ser atualizado toda vez que `data/` mudar no branch de
+desenvolvimento — não é automático. Nesta sessão, `main` foi
+"fast-forwardado" manualmente para acompanhar o branch de trabalho depois
+de mesclar os dados novos. Vale lembrar disso a cada mudança futura em
+`/data`.
+
+## Ajustes de responsividade e UX pedidos após o teste na estrada
+
+1. **Botão "Parar" na notificação**: `RadarForegroundService` agora tem uma
+   ação de notificação que para o serviço de forma limpa (via
+   `onStartCommand` tratando uma `ACTION_STOP`), sem precisar de Force Stop
+   pelas configurações do Android.
+2. **Demora pra atualizar a velocidade ao desacelerar**: identificados dois
+   fatores somados — o `GpsIntervalStrategy` reduzia a frequência de GPS
+   pra 1 consulta a cada 4s abaixo de 30 km/h (limiar alto demais, afetava
+   qualquer freada em trânsito normal), e a média móvel do
+   `SpeedSmoother` (janela de 4 leituras) somava atraso extra. Ajustado:
+   limiar caiu pra 7 km/h (só desacelera a consulta quase parado),
+   intervalo "lento" caiu de 4s pra 2s, e a janela da média móvel caiu de 4
+   pra 2 leituras. Ainda não testado na prática se ficou responsivo o
+   suficiente.
 
 ## Próximos passos reais
 
 1. Confirmar que o Bluetooth volta a persistir entre boots do ESP32 agora
    que `clearBondedDevices()` está comentado.
-2. Testar os novos tipos de alerta assim que o usuário mandar os arquivos
-   de lombada/polícia/pedágio — decidir e implementar a estratégia de
-   mesclar múltiplas fontes no `convert_radares.py`.
-3. Testar a tela de configurações (`AlertTypeSettingsActivity`) na prática
-   — confirmar que desmarcar um tipo realmente filtra os alertas.
-4. Implementar o som/bipe (ainda não feito).
-5. Itens antigos ainda em aberto (baixa prioridade): validar a hipótese de
+2. Testar os novos tipos de alerta na prática (lombada/polícia/pedágio) —
+   já mesclados e disponíveis via `main`, falta validar em campo.
+3. Testar a tela de configurações (`AlertTypeSettingsActivity`) — confirmar
+   que desmarcar um tipo realmente filtra os alertas.
+4. Testar se os ajustes de responsividade de velocidade (item acima)
+   resolveram a demora percebida.
+5. Testar o botão "Parar" da notificação.
+6. Implementar o som/bipe (ainda não feito — só foi esclarecido que nunca
+   existiu).
+7. Itens antigos ainda em aberto (baixa prioridade): validar a hipótese de
    `DirType` no site comunitário.
 
 ## Estado do repositório
