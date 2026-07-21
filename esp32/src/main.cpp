@@ -7,11 +7,12 @@
 #include "Protocol.h"
 
 static const uint16_t COLOR_BACKGROUND = TFT_BLACK;
-static const uint16_t COLOR_CYAN = 0x3F5D;   // aprox. #3FE0E0 em RGB565
-static const uint16_t COLOR_AMBER = 0xFD26;  // aprox. #FFA733 em RGB565
-static const uint16_t COLOR_YELLOW = 0xF611; // aprox. #F2C230
-static const uint16_t COLOR_ORANGE = 0xF421; // aprox. #F28C30
-static const uint16_t COLOR_RED = 0xE8C7;    // aprox. #E23B3B
+static const uint16_t COLOR_BACKINIT   = TFT_DARKCYAN;
+static const uint16_t COLOR_CYAN       = 0x3F5D;   // aprox. #3FE0E0 em RGB565
+static const uint16_t COLOR_AMBER      = 0xFD26;  // aprox. #FFA733 em RGB565
+static const uint16_t COLOR_YELLOW     = 0xF611; // aprox. #F2C230
+static const uint16_t COLOR_ORANGE     = 0xF421; // aprox. #F28C30
+static const uint16_t COLOR_RED        = 0xE8C7;    // aprox. #E23B3B 
 
 static const unsigned long BT_TIMEOUT_MILLIS = 5000;
 
@@ -32,7 +33,7 @@ uint16_t colorForState(const String& state) {
 
 String labelForAlertType(const String& type) {
     if (type == "RADAR") return "RADAR FIXO";
-    if (type == "LOMBADA") return "LOMBADA ELETRONICA";
+    if (type == "LOMBADA") return "LOMBADA";
     if (type == "POLICIA") return "POLICIA RODOVIARIA";
     if (type == "PEDAGIO") return "PEDAGIO";
     return "";
@@ -67,20 +68,19 @@ void drawIdleOrAlert() {
 // primeira espera (nunca conectou) de uma reconexão (já esteve conectado
 // e caiu), como um checklist simples de onde o ESP32 está no processo.
 void drawStatus(bool iconVisible) {
-    tft.fillScreen(COLOR_BACKGROUND);
+    tft.fillScreen(COLOR_BACKINIT);
     tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE, COLOR_BACKINIT);
+    tft.drawString(SerialBT.getBtAddressString(), tft.width() / 2, 20, 2);
     if (iconVisible) {
-        tft.setTextColor(COLOR_RED, COLOR_BACKGROUND);
-        tft.drawString("BT", tft.width() / 2, tft.height() / 2 - 30, 7);
+        tft.setTextColor(COLOR_RED, COLOR_BACKINIT);
+        tft.drawString("BT", 20, 20, 8);
     }
-
-    tft.setTextColor(TFT_WHITE, COLOR_BACKGROUND);
+    tft.setTextColor(COLOR_YELLOW, COLOR_BACKINIT);
     String linha1 = everConnected ? "Conexao perdida" : "Aguardando conexao";
-    tft.drawString(linha1, tft.width() / 2, tft.height() / 2 + 10, 4);
-
-    tft.setTextColor(COLOR_CYAN, COLOR_BACKGROUND);
-    tft.drawString(SerialBT.getBtAddressString(), tft.width() / 2, tft.height() / 2 + 32, 2);
-    tft.drawString("Tentando reconectar...", tft.width() / 2, tft.height() / 2 + 50, 2);
+    tft.drawString(linha1, tft.width() / 2, tft.height() / 2, 4);
+    tft.setTextColor(TFT_WHITE, COLOR_BACKINIT);
+    tft.drawString("Tentando reconectar...", tft.width() / 2, tft.height() -20, 4);
 }
 
 // Limpa todos os dispositivos pareados salvos na flash do ESP32. Deixado
