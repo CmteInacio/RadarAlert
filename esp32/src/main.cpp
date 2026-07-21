@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include <BluetoothSerial.h>
 #include <TFT_eSPI.h>
+#include <esp_bt_main.h>
+#include <esp_bt_device.h>
+#include <esp_gap_bt_api.h>
 #include "Protocol.h"
 
 static const uint16_t COLOR_BACKGROUND = TFT_BLACK;
@@ -60,9 +63,24 @@ void drawBluetoothDisconnected(bool iconVisible) {
 
 }
 
+// Limpa todos os dispositivos pareados salvos na flash do ESP32. Evita o
+// erro "authentication failed, status:10" quando o celular é despareado e
+// pareado de novo, mas o ESP32 ainda guarda a chave antiga.
+void clearBondedDevices() {
+    int count = esp_bt_gap_get_bond_device_num();
+    if (count <= 0) return;
+
+    esp_bd_addr_t devices[count];
+    esp_bt_gap_get_bond_device_list(&count, devices);
+    for (int i = 0; i < count; i++) {
+        esp_bt_gap_remove_bond_device(devices[i]);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     SerialBT.begin("RadarAlert-ESP32");
+    clearBondedDevices();
 
     tft.init();
     tft.setRotation(1); // paisagem, 320x170
