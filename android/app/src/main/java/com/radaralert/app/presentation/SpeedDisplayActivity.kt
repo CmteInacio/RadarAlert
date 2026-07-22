@@ -1,6 +1,7 @@
 package com.radaralert.app.presentation
 
 import android.Manifest
+import android.R
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -13,11 +14,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
@@ -33,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -111,9 +117,9 @@ class SpeedDisplayActivity : ComponentActivity() {
 }
 
 private fun labelFor(tipo: TipoAlerta): String = when (tipo) {
-    TipoAlerta.RADAR_FIXO -> "Radar fixo"
-    TipoAlerta.LOMBADA_ELETRONICA -> "Lombada eletrônica"
-    TipoAlerta.POLICIA_RODOVIARIA -> "Polícia rodoviária"
+    TipoAlerta.RADAR_FIXO -> "Radar Fixo"
+    TipoAlerta.LOMBADA_ELETRONICA -> "Lombada"
+    TipoAlerta.POLICIA_RODOVIARIA -> "Polícia Rodoviária"
     TipoAlerta.PEDAGIO -> "Pedágio"
 }
 
@@ -143,7 +149,17 @@ private fun RadarAlertScreen(displayState: DisplayState) {
             .fillMaxSize()
             .background(backgroundColor),
         contentAlignment = Alignment.Center
-    ) {
+    )
+    {
+        if ( radarState.nearestRadar.tipo = "Lombada" ){
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Image(
+                 //   painter = painterResource(id = R.drawable.lombada)
+                )
+            }
+            Spacer( modifier = Modifier.height(30.dp) )
+            )
+        }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text(
                 text = "${radarState.speedKmh}",
